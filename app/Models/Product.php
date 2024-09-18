@@ -20,15 +20,24 @@ class Product extends Model
     ];  
 
     /**
-     * 商品検索
+     * 商品検索と会社情報の結合
      *
      * @param string $keyword 商品名検索キーワード
      * @param int|null $companyId メーカーID（nullの場合は全メーカ検索）
      * @return \Illuminate\Database\Eloquent\Collection
      */
-    public static function search($keyword = '', $companyId = null){
+    public static function searchWithCompanies($keyword = '', $companyId = null){
         return self::join('companies', 'product.company_id', '=', 'companies.id')
-            ->select('product.id', 'product.product_name', 'product.price', 'product.stock', 'product.comment', 'product.img_path', 'companies.company_name')
+            ->select(
+                'product.id', 
+                'product.product_name', 
+                'product.price', 
+                'product.stock', 
+                'product.comment', 
+                'product.img_path', 
+                'companies.company_name',
+                'companies.id as company_id'
+            )
             ->when($keyword, function ($query, $keyword) {
                 return $query->where('product.product_name', 'like', "%{$keyword}%");
             })
@@ -36,6 +45,18 @@ class Product extends Model
                 return $query->where('product.company_id', $companyId);
             })
             ->get();
+    }
+
+    /**
+     * ユニークな会社情報を取得
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    public static function getUniqueCompanies() {
+        return self::join('companies', 'product.company_id', '=', 'companies.id')
+                   ->select('companies.company_name', 'companies.id as company_id')
+                   ->distinct()
+                   ->get();
     }
 
     /**
@@ -66,7 +87,16 @@ class Product extends Model
     public static function getProductDetails($id)
     {
         return self::join('companies', 'product.company_id', '=', 'companies.id')
-            ->select('product.id', 'product.product_name', 'product.price', 'product.stock', 'product.comment', 'product.img_path', 'companies.company_name', 'product.company_id')
+            ->select(
+                'product.id', 
+                'product.product_name', 
+                'product.price', 
+                'product.stock', 
+                'product.comment', 
+                'product.img_path', 
+                'companies.company_name', 
+                'product.company_id'
+            )
             ->where('product.id', $id)
             ->first();
     }

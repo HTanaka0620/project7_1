@@ -44,7 +44,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($product as $item)
+                                    @foreach($products as $item)
                                     <tr class="{{ $loop->odd  ? 'even-row' : 'odd-row' }}">
                                         <td>{{ $item->id }}</td>
                                         <td><img src="{{ asset('product_docs/' . $item->img_path) }}" alt="商品画像" class="img-thumbnail product-image"></td>
