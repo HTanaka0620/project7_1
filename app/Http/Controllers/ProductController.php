@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ProductRequest; // ProductRequest をインポート
 use Illuminate\Http\Request;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
@@ -23,14 +24,7 @@ class ProductController extends Controller
         return view('product_list', ['products' => $products, 'companies' => $companies]);
     }
 
-    public function Regist(Request $request) {
-        // バリデーションルールの追加（必須項目に関するチェック）
-        $request->validate([
-            'product_name' => 'required|string|max:255',
-            'company_id' => 'required|exists:companies,id', // メーカーIDが存在するか確認
-            'price' => 'required|numeric|min:0', // 価格は数値で、0以上であること
-            'stock' => 'required|integer|min:0', // 在庫は整数で、0以上であること
-        ]);
+    public function Regist(ProductRequest $request) {
 
         DB::beginTransaction(); // トランザクション開始
         try {
@@ -87,14 +81,7 @@ class ProductController extends Controller
         return view('product_edit', ['product' => $product, 'companies' => $companies]);
     }
 
-    public function update(Request $request, $id) {
-        // バリデーションルールの追加（新規登録と同じルール）
-        $request->validate([
-            'product_name' => 'required|string|max:255',
-            'company_id' => 'required|exists:companies,id',
-            'price' => 'required|numeric|min:0',
-            'stock' => 'required|integer|min:0',
-        ]);
+    public function update(ProductRequest $request, $id) {
 
         DB::beginTransaction(); // トランザクション開始
         try {
