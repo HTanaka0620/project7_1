@@ -6,21 +6,11 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class ProductRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     *
-     * @return bool
-     */
     public function authorize()
     {
         return true;
     }
 
-    /**
-     * バリデーションルールを定義するメソッド
-     *
-     * @return array
-     */
     public function rules()
     {
         return [
@@ -28,6 +18,16 @@ class ProductRequest extends FormRequest
             'company_id' => 'required|exists:companies,id',
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+            'product_name.required' => '商品名は必須項目です。',
+            'company_id.required' => 'メーカー名は必須項目です。',
+            'price.required' => '価格は必須項目です。',
+            'stock.required' => '在庫数は必須項目です。',
         ];
     }
 }

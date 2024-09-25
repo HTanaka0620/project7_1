@@ -1,7 +1,8 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProductRequest; // ProductRequest をインポート
+use App\Http\Requests\ProductRequest;
 use Illuminate\Http\Request;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
@@ -10,27 +11,23 @@ use Exception;
 
 class ProductController extends Controller
 {
+    // 商品一覧の表示
     public function List(Request $request) {
         $keyword = $request->input('keyword', '');
         $companyId = $request->input('company_id', null);
 
-        // ProductモデルのsearchWithCompaniesメソッドを使って、companiesテーブルとproductテーブルを結合してデータを取得
+        // ProductモデルのsearchWithCompaniesメソッドを使ってデータ取得
         $products = Product::searchWithCompanies($keyword, $companyId);
-
-        // companiesテーブルから全てのデータを取得する代わりに、結合した情報からユニークなcompany_idとcompany_nameを取得
         $companies = Product::getUniqueCompanies()->pluck('company_name', 'company_id');
 
-        // ビューにデータを渡す
         return view('product_list', ['products' => $products, 'companies' => $companies]);
     }
 
+    // 新規登録処理
     public function Regist(ProductRequest $request) {
-
-        DB::beginTransaction(); // トランザクション開始
+        DB::beginTransaction();
         try {
-            // 画像ファイルがアップロードされた場合
             if ($request->hasFile('img_path')) {
-                // 画像ファイルを指定のパスに保存
                 $imagePath = $request->file('img_path');
                 $imageName = $imagePath->getClientOriginalName();
                 $disk = Storage::build([
@@ -42,52 +39,41 @@ class ProductController extends Controller
                 $imageName = null;
             }
 
-            // 商品を登録
             Product::registerProduct($request->all(), $imageName);
+            DB::commit();
 
-            DB::commit(); // 問題がなければコミット
-            return redirect()->route('show_Registration');
+            return redirect()->route('show_Registration')->with('success', '商品が登録されました');
         } catch (Exception $e) {
-            DB::rollBack(); // エラーがあったらロールバック
-            return redirect()->route('show_Registration')
-                             ->withErrors('登録中にエラーが発生しました: ' . $e->getMessage());
+            DB::rollBack();
+            return redirect()->route('show_Registration')->withErrors('登録中にエラーが発生しました: ' . $e->getMessage());
         }
     }
 
+    // 新規登録画面の表示
     public function ChooseCompanies() {
-        // モデルのメソッドを呼び出し、ユニークなcompany情報を取得
         $companies = Product::getUniqueCompanies()->pluck('company_name', 'company_id');
-
-        return view('product_Registration', ['companies' => $companies]);
+        return view('product_registration', compact('companies'));
     }
 
+    // 商品詳細表示
     public function show_details($id) {
-        // モデルのメソッドを使って商品詳細を取得
         $product = Product::getProductDetails($id);
-
-        // companies の情報を product 結合から取得
-        $companies = Product::getUniqueCompanies()->pluck('company_name', 'company_id');
-
-        return view('product_details', ['product' => $product, 'companies' => $companies]);
+        return view('product_details', compact('product'));
     }
 
+    // 商品編集画面の表示
     public function show_edit($id) {
-        // モデルのメソッドを使って商品詳細を取得
         $product = Product::getProductDetails($id);
-
-        // companies の情報を product 結合から取得
         $companies = Product::getUniqueCompanies()->pluck('company_name', 'company_id');
-
-        return view('product_edit', ['product' => $product, 'companies' => $companies]);
+        return view('product_edit', compact('product', 'companies'));
     }
 
+    // 商品の更新処理
     public function update(ProductRequest $request, $id) {
-
-        DB::beginTransaction(); // トランザクション開始
+        DB::beginTransaction();
         try {
             $imageName = null;
             if ($request->hasFile('img_path')) {
-                // 画像ファイルを指定のパスに保存
                 $imagePath = $request->file('img_path');
                 $imageName = $imagePath->getClientOriginalName();
                 $disk = Storage::build([
@@ -97,31 +83,27 @@ class ProductController extends Controller
                 $disk->putFileAs("", $imagePath, $imageName);
             }
 
-            // 商品を更新
             Product::updateProduct($id, $request->all(), $imageName);
+            DB::commit();
 
-            DB::commit(); // 問題がなければコミット
-            return redirect()->route('product_edit', ['id' => $id])
-                             ->with('success', '商品情報が更新されました');
+            return redirect()->route('product_edit', ['id' => $id])->with('success', '商品情報が更新されました');
         } catch (Exception $e) {
-            DB::rollBack(); // エラーがあったらロールバック
-            return redirect()->route('product_edit', ['id' => $id])
-                             ->withErrors('更新中にエラーが発生しました: ' . $e->getMessage());
+            DB::rollBack();
+            return redirect()->route('product_edit', ['id' => $id])->withErrors('更新中にエラーが発生しました: ' . $e->getMessage());
         }
     }
 
+    // 商品削除処理
     public function destroy($id) {
-        DB::beginTransaction(); // トランザクション開始
+        DB::beginTransaction();
         try {
-            // 商品を削除
             Product::deleteProduct($id);
+            DB::commit();
 
-            DB::commit(); // 問題がなければコミット
             return redirect()->route('product_list')->with('success', '商品が削除されました');
         } catch (Exception $e) {
-            DB::rollBack(); // エラーがあったらロールバック
-            return redirect()->route('product_list')
-                             ->withErrors('削除中にエラーが発生しました: ' . $e->getMessage());
+            DB::rollBack();
+            return redirect()->route('product_list')->withErrors('削除中にエラーが発生しました: ' . $e->getMessage());
         }
     }
 }
