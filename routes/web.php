@@ -44,4 +44,7 @@ Route::get('/product_edit/{id}', [ProductController::class, 'show_edit'])->name(
 Route::put('/product_update/{id}', [ProductController::class, 'update'])->name('product_update');
 
 // 商品の削除処理
-Route::delete('/product_destroy/{id}', [ProductController::class, 'destroy'])->name('product_destroy');
+Route::delete('/product/{id}', [ProductController::class, 'destroy'])->name('product_destroy');
+
+// Ajax検索用のルート
+Route::get('/product/search', [ProductController::class, 'search'])->name('product.search');

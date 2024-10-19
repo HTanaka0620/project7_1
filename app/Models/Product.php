@@ -3,6 +3,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
+use App\Models\Sales;
 
 class Product extends Model
 {
@@ -17,16 +19,33 @@ class Product extends Model
         'stock',
         'comment',
         'img_path'
-    ];  
+    ];
+
+    /**
+     * Saleモデルとのリレーション
+     */
+    public function sales()
+    {
+        return $this->hasMany(Sales::class, 'product_id');
+    }
+
+    /**
+     * 在庫の減算
+     */
+    public function decrementStock($quantity)
+    {
+        if ($this->stock < $quantity) {
+            throw new \Exception("在庫が不足しています (商品ID: {$this->id}, 在庫: {$this->stock})。");
+        }
+
+        $this->decrement('stock', $quantity);
+        $this->save();
+    }
 
     /**
      * 商品検索と会社情報の結合
-     *
-     * @param string $keyword 商品名検索キーワード
-     * @param int|null $companyId メーカーID（nullの場合は全メーカ検索）
-     * @return \Illuminate\Database\Eloquent\Collection
      */
-    public static function searchWithCompanies($keyword = '', $companyId = null){
+    public static function searchWithCompanies($keyword = '', $companyId = null, $priceMin = null, $priceMax = null, $stockMin = null, $stockMax = null){
         return self::join('companies', 'product.company_id', '=', 'companies.id')
             ->select(
                 'product.id', 
@@ -44,13 +63,22 @@ class Product extends Model
             ->when($companyId, function ($query, $companyId) {
                 return $query->where('product.company_id', $companyId);
             })
-            ->get();
+            ->when($priceMin, function ($query, $priceMin) {
+                return $query->where('product.price', '>=', $priceMin);
+            })
+            ->when($priceMax, function ($query, $priceMax) {
+                return $query->where('product.price', '<=', $priceMax);
+            })
+            ->when($stockMin, function ($query, $stockMin) {
+                return $query->where('product.stock', '>=', $stockMin);
+            })
+            ->when($stockMax, function ($query, $stockMax) {
+                return $query->where('product.stock', '<=', $stockMax);
+            });
     }
-
+            
     /**
      * ユニークな会社情報を取得
-     *
-     * @return \Illuminate\Support\Collection
      */
     public static function getUniqueCompanies() {
         return self::join('companies', 'product.company_id', '=', 'companies.id')
@@ -61,10 +89,6 @@ class Product extends Model
 
     /**
      * 商品を登録する
-     *
-     * @param array $data 登録する商品のデータ
-     * @param string|null $imageName 画像のパス
-     * @return void
      */
     public static function registerProduct(array $data, $imageName = null)
     {
@@ -80,9 +104,6 @@ class Product extends Model
 
     /**
      * 商品の詳細を取得
-     *
-     * @param int $id
-     * @return Model|null
      */
     public static function getProductDetails($id)
     {
@@ -103,11 +124,6 @@ class Product extends Model
 
     /**
      * 商品の更新
-     *
-     * @param int $id
-     * @param array $data 更新するデータ
-     * @param string|null $imageName 画像のパス
-     * @return void
      */
     public static function updateProduct($id, array $data, $imageName = null)
     {
@@ -129,11 +145,17 @@ class Product extends Model
 
     /**
      * 商品の削除
-     *
-     * @param int $id
-     * @return void
      */
-    public static function deleteProduct($id){
-        self::where('id', $id)->delete();
+    public static function deleteProduct($id) {
+        $product = self::find($id);
+
+        if ($product) {
+            $product->delete();
+            Log::info("商品ID {$id} を削除しました。");
+            return true;
+        } else {
+            Log::error("削除失敗。商品ID {$id} が存在しません。");
+            return false;
+        }
     }
 }

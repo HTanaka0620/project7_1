@@ -13,14 +13,61 @@ class ProductController extends Controller
 {
     // 商品一覧の表示
     public function List(Request $request) {
-        $keyword = $request->input('keyword', '');
-        $companyId = $request->input('company_id', null);
+        $keyword = $request->input('keyword');
+        $companyId = $request->input('company_id');
+        $priceMin = $request->input('price_min');
+        $priceMax = $request->input('price_max');
+        $stockMin = $request->input('stock_min');
+        $stockMax = $request->input('stock_max');
 
-        // ProductモデルのsearchWithCompaniesメソッドを使ってデータ取得
-        $products = Product::searchWithCompanies($keyword, $companyId);
+        $sortBy = $request->input('sort_by', 'id'); // デフォルトはID
+        $sortOrder = $request->input('sort_order', 'desc'); // デフォルトは降順
+
+        $products = Product::searchWithCompanies($keyword, $companyId, $priceMin, $priceMax, $stockMin, $stockMax)
+                    ->orderBy($sortBy, $sortOrder)
+                    ->get();
         $companies = Product::getUniqueCompanies()->pluck('company_name', 'company_id');
 
-        return view('product_list', ['products' => $products, 'companies' => $companies]);
+        return view('product_list', [
+            'products' => $products,
+            'companies' => $companies,
+            'sort_by' => $sortBy,
+            'sort_order' => $sortOrder
+        ]);
+    }
+
+    public function search(Request $request) {
+        \Log::info('検索条件', $request->all());
+
+        $keyword = $request->input('keyword');
+        $companyId = $request->input('company_id');
+        $priceMin = $request->input('price_min');
+        $priceMax = $request->input('price_max');
+        $stockMin = $request->input('stock_min');
+        $stockMax = $request->input('stock_max');
+
+        $sortBy = $request->input('sort_by', 'id');
+        $sortOrder = $request->input('sort_order', 'desc');
+
+        $products = Product::searchWithCompanies($keyword, $companyId, $priceMin, $priceMax, $stockMin, $stockMax)
+                    ->orderBy($sortBy, $sortOrder)
+                    ->get();
+
+        if ($request->ajax()) {
+            return view('partials.product_table', [
+                'products' => $products,
+                'sort_by' => $sortBy,
+                'sort_order' => $sortOrder
+            ])->render();
+        }
+
+        $companies = Product::getUniqueCompanies()->pluck('company_name', 'company_id');
+        return view('product_list', [
+            'products' => $products,
+            'companies' => $companies,
+            'sort_by' => $sortBy,
+            'sort_order' => $sortOrder
+        ]);
     }
 
     // 新規登録処理
@@ -97,13 +144,22 @@ class ProductController extends Controller
     public function destroy($id) {
         DB::beginTransaction();
         try {
-            Product::deleteProduct($id);
+            // ProductモデルのdeleteProductメソッドがfalseを返した場合、例外を投げる
+            if (!Product::deleteProduct($id)) {
+                throw new Exception("商品ID {$id} が見つかりません");
+            }
+
             DB::commit();
 
-            return redirect()->route('product_list')->with('success', '商品が削除されました');
+            // 成功時にJSONでレスポンスを返す
+            \Log::info("商品ID {$id} を削除しました");
+            return response()->json(['success' => true]);
         } catch (Exception $e) {
             DB::rollBack();
-            return redirect()->route('product_list')->withErrors('削除中にエラーが発生しました: ' . $e->getMessage());
+
+            // エラーが発生した場合にエラーレスポンスを返す
+            \Log::error("削除に失敗しました。商品ID: {$id}, エラー: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 }

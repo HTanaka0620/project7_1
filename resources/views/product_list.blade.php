@@ -7,67 +7,51 @@
                 <div class="card">
                     <div class="card-header">{{ __('商品画面一覧') }}</div>
                     <div class="card-body">
-                        <form method="GET" action="{{ route('product_list') }}" class="d-flex align-items-center">
+                        <!-- 検索フォーム -->
+                        <form id="search-form" method="GET" action="{{ route('product.search') }}">
                             @csrf
-                            <div class="form-group mx-2 flex-grow-1">
-                                <input id="keyword" type="text" name="keyword" class="form-control" placeholder="検索キーワード">
+                            <!-- 1段目: 検索キーワードとメーカー名 -->
+                            <div class="form-row d-flex mb-3">
+                                <div class="form-group flex-grow-1 mx-2">
+                                    <input id="keyword" type="text" name="keyword" class="form-control" placeholder="検索キーワード" value="{{ request('keyword') }}">
+                                </div>
+                                <div class="form-group flex-grow-1 mx-2">
+                                    <select id="company_id" name="company_id" class="form-control search cp_sl01">
+                                        <option value="">メーカー名</option>
+                                        @foreach($companies as $id => $name)
+                                            <option value="{{ $id }}" {{ request('company_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
-                            <div class="form-group mx-2 flex-grow-1">
-                                <select name="company_id" class="form-control search cp_sl01">
-                                    <option value="" hidden>メーカー名</option>
-                                    @foreach($companies as $id => $name)
-                                        <option value="{{ $id }}">{{ $name }}</option>
-                                    @endforeach
-                                </select>
+                        
+                            <!-- 2段目: 価格の下限、上限、在庫数の下限、上限、検索ボタン -->
+                            <div class="form-row d-flex mb-3">
+                                <div class="form-group flex-grow-1 mx-2">
+                                    <input type="number" name="price_min" class="form-control" placeholder="価格の下限" value="{{ request('price_min') }}">
+                                </div>
+                                <div class="form-group flex-grow-1 mx-2">
+                                    <input type="number" name="price_max" class="form-control" placeholder="価格の上限" value="{{ request('price_max') }}">
+                                </div>
+                                <div class="form-group flex-grow-1 mx-2">
+                                    <input type="number" name="stock_min" class="form-control" placeholder="在庫数の下限" value="{{ request('stock_min') }}">
+                                </div>
+                                <div class="form-group flex-grow-1 mx-2">
+                                    <input type="number" name="stock_max" class="form-control" placeholder="在庫数の上限" value="{{ request('stock_max') }}">
+                                </div>
+                                <div class="form-group mx-2">
+                                    <button type="submit" class="btn btn-search">{{ __('検索') }}</button>
+                                </div>
                             </div>
-                            <div class="form-group mx-2">
-                                <button type="submit" class="btn btn-search">
-                                    {{ __('検索') }}
-                                </button>
-                            </div>
+                        
+                            <!-- ソート条件を保持するためのhiddenフィールド -->
+                            <input type="hidden" name="sort_by" value="{{ request('sort_by', 'id') }}">
+                            <input type="hidden" name="sort_order" value="{{ request('sort_order', 'desc') }}">
                         </form>
-                        <div class="mt-3">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>商品画像</th>
-                                        <th>商品名</th>
-                                        <th>価格</th>
-                                        <th>在庫数</th>
-                                        <th>メーカー名</th>
-                                        <th>
-                                            <a class="btn btn-primary" href="{{ route('show_Registration') }}">
-                                                {{ __('新規登録') }}
-                                            </a>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($products as $item)
-                                    <tr class="{{ $loop->odd  ? 'even-row' : 'odd-row' }}">
-                                        <td>{{ $item->id }}</td>
-                                        <td><img src="{{ asset('product_docs/' . $item->img_path) }}" alt="商品画像" class="img-thumbnail product-image"></td>
-                                        <td>{{ $item->product_name }}</td>
-                                        <td>¥{{ number_format($item->price) }}</td>
-                                        <td>{{ $item->stock }}</td>
-                                        <td>{{ $item->company_name }}</td>
-                                        <td>
-                                            <a class="btn btn-details" href="{{ route('product_details', ['id' => $item->id]) }}">
-                                                {{ __('詳細') }}
-                                            </a>
-                                            <form action="{{ route('product_destroy', ['id' => $item->id]) }}" method="POST" style="display:inline;">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-delete">
-                                                    {{ __('削除') }}
-                                                </button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                                                        
+                        <!-- 検索結果の表示部分 -->
+                        <div class="mt-3" id="search-results">
+                            @include('partials.product_table', ['products' => $products])
                         </div>
                     </div>
                 </div>
@@ -75,3 +59,11 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        // JavaScript用の削除URLテンプレートを設定
+        const deleteUrlTemplate = "{{ url('/product') }}/:id";
+    </script>
+    <script src="{{ asset('js/search.js') }}"></script>
+@endpush
