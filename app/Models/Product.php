@@ -42,6 +42,7 @@ class Product extends Model
         $this->save();
     }
 
+
     /**
      * 商品検索と会社情報の結合
      */
